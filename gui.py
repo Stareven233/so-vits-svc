@@ -3,10 +3,13 @@ import os
 import pickle
 import threading
 import time
+from argparse import Namespace
 
 import librosa
 import numpy as np
-import PySimpleGUI as sg
+# import PySimpleGUI as sg
+from utils import Dummy
+sg = Dummy()
 import sounddevice as sd
 import torch
 from torch.nn import functional as F

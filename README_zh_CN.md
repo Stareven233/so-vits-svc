@@ -371,11 +371,11 @@ python train_diff.py -c configs/diffusion.yaml
 
 ## 🤖 推理
 
-使用 [inference_main.py](inference_main.py)
+使用 [infer.py](infer.py)
 
 ```shell
 # 例
-python inference_main.py -m "logs/44k/G_30400.pth" -c "configs/config.json" -n "君の知らない物語-src.wav" -t 0 -s "nen"
+python infer.py -m "logs/44k/G_30400.pth" -c "configs/config.json" -n "君の知らない物語-src.wav" -t 0 -s "nen"
 ```
 
 必填项部分：
@@ -429,8 +429,8 @@ python inference_main.py -m "logs/44k/G_30400.pth" -c "configs/config.json" -n "
   + 执行`python cluster/train_cluster.py`，模型的输出会在`logs/44k/kmeans_10000.pt`
   + 聚类模型目前可以使用 gpu 进行训练，执行`python cluster/train_cluster.py --gpu`
 + 推理过程：
-  + `inference_main.py`中指定`cluster_model_path` 为模型输出文件，留空则默认为`logs/44k/kmeans_10000.pt`
-  + `inference_main.py`中指定`cluster_infer_ratio`，`0`为完全不使用聚类，`1`为只使用聚类，通常设置`0.5`即可
+  + `infer.py`中指定`cluster_model_path` 为模型输出文件，留空则默认为`logs/44k/kmeans_10000.pt`
+  + `infer.py`中指定`cluster_infer_ratio`，`0`为完全不使用聚类，`1`为只使用聚类，通常设置`0.5`即可
 
 ### 特征检索
 
@@ -447,8 +447,8 @@ python train_index.py -c configs/config.json
 
 + 推理过程：
   + 需要首先指定`--feature_retrieval`，此时聚类方案会自动切换到特征检索方案
-  + `inference_main.py`中指定`cluster_model_path` 为模型输出文件，留空则默认为`logs/44k/feature_and_index.pkl`
-  + `inference_main.py`中指定`cluster_infer_ratio`，`0`为完全不使用特征检索，`1`为只使用特征检索，通常设置`0.5`即可
+  + `infer.py`中指定`cluster_model_path` 为模型输出文件，留空则默认为`logs/44k/feature_and_index.pkl`
+  + `infer.py`中指定`cluster_infer_ratio`，`0`为完全不使用特征检索，`1`为只使用特征检索，通常设置`0.5`即可
 
 
 ## 🗜️ 模型压缩

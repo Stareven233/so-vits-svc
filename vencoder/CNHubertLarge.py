@@ -5,13 +5,21 @@ from vencoder.encoder import SpeechEncoder
 
 
 class CNHubertLarge(SpeechEncoder):
-    def __init__(self, vec_path="pretrain/chinese-hubert-large-fairseq-ckpt.pt", device=None):
+    def __init__(
+        self,
+        vec_path="pretrain/chinese-hubert-large-fairseq-ckpt.pt",
+        device=None,
+        log=True,
+    ):
         super().__init__()
-        print("load model(s) from {}".format(vec_path))
+        import logger
+
+        if log:
+            logger.info("load model(s) from {}".format(vec_path))
         self.hidden_dim = 1024
         models, saved_cfg, task = checkpoint_utils.load_model_ensemble_and_task(
-          [vec_path],
-          suffix="",
+            [vec_path],
+            suffix="",
         )
         if device is None:
             self.dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -28,8 +36,8 @@ class CNHubertLarge(SpeechEncoder):
         feats = feats.view(1, -1)
         padding_mask = torch.BoolTensor(feats.shape).fill_(False)
         inputs = {
-          "source": feats.to(wav.device),
-          "padding_mask": padding_mask.to(wav.device)
+            "source": feats.to(wav.device),
+            "padding_mask": padding_mask.to(wav.device),
         }
         with torch.no_grad():
             logits = self.model.extract_features(**inputs)

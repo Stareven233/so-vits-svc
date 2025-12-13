@@ -165,3 +165,5 @@ pretrain/
 .vscode/launch.json
 
 trained/**/
+chunks_temp.json
+exp/

@@ -6,7 +6,7 @@ from vencoder.whisper.model import ModelDimensions, Whisper
 
 
 class WhisperPPG(SpeechEncoder):
-    def __init__(self, vec_path="pretrain/medium.pt", device=None):
+    def __init__(self, vec_path="pretrain/whisper/medium.pt", device=None):
         super().__init__()
         if device is None:
             self.dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -26,6 +26,12 @@ class WhisperPPG(SpeechEncoder):
         audio = pad_or_trim(audio)
         mel = log_mel_spectrogram(audio).to(self.dev)
         with torch.no_grad():
-            ppg = self.model.encoder(mel.unsqueeze(0)).squeeze().data.cpu().float().numpy()
-            ppg = torch.FloatTensor(ppg[:ppgln, ]).to(self.dev)
+            ppg = (
+                self.model.encoder(mel.unsqueeze(0))
+                .squeeze()
+                .data.cpu()
+                .float()
+                .numpy()
+            )
+            ppg = torch.FloatTensor(ppg[:ppgln,]).to(self.dev)
             return ppg[None, :, :].transpose(1, 2)

@@ -4,8 +4,13 @@ import logging
 import soundfile
 import torch
 import torchaudio
-from flask import Flask, request, send_file
-from flask_cors import CORS
+# from flask import Flask, request, send_file
+# from flask_cors import CORS
+from utils import Dummy
+Flask = Dummy()
+request = Dummy()
+send_file = Dummy()
+CORS = Dummy()
 
 from inference.infer_tool import RealTimeVC, Svc
 
@@ -31,13 +36,32 @@ def voice_change_model():
     # 模型推理
     if raw_infer:
         # out_audio, out_sr = svc_model.infer(speaker_id, f_pitch_change, input_wav_path)
-        out_audio, out_sr = svc_model.infer(speaker_id, f_pitch_change, input_wav_path, cluster_infer_ratio=0,
-                                            auto_predict_f0=False, noice_scale=0.4, f0_filter=False)
-        tar_audio = torchaudio.functional.resample(out_audio, svc_model.target_sample, daw_sample)
+        out_audio, out_sr = svc_model.infer(
+            speaker_id,
+            f_pitch_change,
+            input_wav_path,
+            cluster_infer_ratio=0,
+            auto_predict_f0=False,
+            noice_scale=0.4,
+            f0_filter=False,
+        )
+        tar_audio = torchaudio.functional.resample(
+            out_audio, svc_model.target_sample, daw_sample
+        )
     else:
-        out_audio = svc.process(svc_model, speaker_id, f_pitch_change, input_wav_path, cluster_infer_ratio=0,
-                                auto_predict_f0=False, noice_scale=0.4, f0_filter=False)
-        tar_audio = torchaudio.functional.resample(torch.from_numpy(out_audio), svc_model.target_sample, daw_sample)
+        out_audio = svc.process(
+            svc_model,
+            speaker_id,
+            f_pitch_change,
+            input_wav_path,
+            cluster_infer_ratio=0,
+            auto_predict_f0=False,
+            noice_scale=0.4,
+            f0_filter=False,
+        )
+        tar_audio = torchaudio.functional.resample(
+            torch.from_numpy(out_audio), svc_model.target_sample, daw_sample
+        )
     # 返回音频
     out_wav_path = io.BytesIO()
     soundfile.write(out_wav_path, tar_audio.cpu().numpy(), daw_sample, format="wav")

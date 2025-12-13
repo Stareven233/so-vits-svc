@@ -5,9 +5,12 @@ from vencoder.encoder import SpeechEncoder
 
 
 class DPHubert(SpeechEncoder):
-    def __init__(self, vec_path="pretrain/DPHuBERT-sp0.75.pth", device=None):
+    def __init__(self, vec_path="pretrain/DPHuBERT-sp0.75.pth", device=None, log=True):
         super().__init__()
-        print("load model(s) from {}".format(vec_path))
+        import logger
+
+        if log:
+            logger.info("load model(s) from {}".format(vec_path))
         if device is None:
             self.dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         else:
@@ -26,4 +29,4 @@ class DPHubert(SpeechEncoder):
         with torch.no_grad():
             with torch.inference_mode():
                 units = self.model(feats)[0]
-                return units.transpose(1,2)
+                return units.transpose(1, 2)
