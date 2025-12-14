@@ -72,6 +72,35 @@ def format_wav(audio_path):
   soundfile.write(audio_path.with_suffix('.wav'), raw_audio, raw_sample_rate)
 
 
+def format_wav_to_memory(audio_path: Path | str):
+  '''
+    加载音频文件，并将其格式化为WAV格式的内存对象。
+
+    Args:
+        audio_path (str or Path): 输入音频文件的路径。
+
+    Returns:
+        io.BytesIO: 一个包含WAV格式音频数据的内存文件对象。
+                    如果加载失败，则返回 None。
+    '''
+  try:
+    # 1. 加载原始音频数据
+    audio_path = Path(audio_path)
+    raw_audio, raw_sample_rate = librosa.load(audio_path, mono=True, sr=None)
+    # 2. 创建一个内存中的字节流对象
+    wav_buffer = io.BytesIO()
+    # wav_buffer = utils.AutoRewindBytesIO()
+    # 3. 将音频数据写入这个内存对象
+    # soundfile.write 可以接受一个类文件对象作为第一个参数
+    soundfile.write(wav_buffer, raw_audio, raw_sample_rate, format='WAV')
+    # 4. 重要：将指针重置到流的开始位置，以便后续读取
+    wav_buffer.seek(0)
+    return wav_buffer
+  except Exception as e:
+    print(f'[format_wav_to_memory] 处理音频文件 {audio_path} 时出错: {e}')
+    return None
+
+
 def get_end_file(dir_path, end):
   file_lists = []
   for root, dirs, files in os.walk(dir_path):
@@ -459,7 +488,7 @@ class Svc:
 
   def slice_inference(
       self,
-      raw_audio_path,
+      raw_audio: Path | io.BytesIO,
       spk,
       tran,
       slice_db,
@@ -483,9 +512,10 @@ class Svc:
       if len(self.spk2id) == 1:
         spk = self.spk2id.keys()[0]
         use_spk_mix = False
-    wav_path = Path(raw_audio_path).with_suffix('.wav')
-    chunks = slicer.cut(wav_path, db_thresh=slice_db)
-    audio_data, audio_sr = slicer.chunks2audio(wav_path, chunks)
+    if isinstance(raw_audio, Path):
+      raw_audio = raw_audio.with_suffix('.wav')
+    chunks = slicer.cut(raw_audio, db_thresh=slice_db)
+    audio_data, audio_sr = slicer.chunks2audio(raw_audio, chunks)
     per_size = int(clip_seconds * audio_sr)
     lg_size = int(lg_num * audio_sr)
     lg_size_r = int(lg_size * lgr_num)

@@ -1,15 +1,14 @@
 '''
-$python = "F:/CODE/!projects/DDSP-SVC/.venv/Scripts/python.exe"
-$base_dir = "F:/Unbra/Baito/ai-sings"
+cd D:/Code/projects/so-vits-svc
+$python = 'D:/Code/projects/RIFT-SVC/.venv/Scripts/python.exe'
+$base_dir = 'D:/Document/ai-sings'
 $path = "${base_dir}/God Knows/4K高清修复音源升级God Knows_Vocals_vocals_noreverb-new-au.flac"
 $path = "${base_dir}/君は薔薇より美しい/布施明 君は薔薇より美しい 你比玫瑰更美丽_Vocals_vocals_noreverb.flac"
-cd F:/CODE/!projects/so-vits-svc
-& $python infer.py -m "exp/megumin/G_59200.pth" -i $path -t 0 -s "megumin"
-& $python infer.py -m "exp/megumin/G_59200.pth" -c "exp/megumin/config.json" -i $path -t 0 -s "megumin"
+$path = "${base_dir}/TAIDADA/TAIDADA_反相不纯人声_Vocals_vocals_noreverb.flac"
+& $python infer.py -m 'exp/megumin/G_59200.pth' -i $path -t 0 -s 'megumin'
 
-& $python infer.py -m "E:/SVC-Fusion/project/pretrained/sovits/d7c1d2606a682e23784aa25471332e4d/G_0.pth" -c "E:/SVC-Fusion/project/pretrained/sovits/d7c1d2606a682e23784aa25471332e4d/config.json" -i $path -t 0 -s "smkx"
-New-Item -Path "F:/CODE/!projects/so-vits-svc/pretrain/contentvec/checkpoint_best_legacy_500.pt" -ItemType HardLink -Target "F:/CODE/!projects/DDSP-SVC/pretrain/contentvec/checkpoint_best_legacy_500.pt"
-New-Item -Path "F:/CODE/!projects/so-vits-svc/pretrain/rmvpe/model.pt" -ItemType HardLink -Target "F:/CODE/!projects/DDSP-SVC/pretrain/rmvpe/model.pt"
+New-Item -Path 'F:/CODE/!projects/so-vits-svc/pretrain/contentvec/checkpoint_best_legacy_500.pt' -ItemType HardLink -Target 'F:/CODE/!projects/DDSP-SVC/pretrain/contentvec/checkpoint_best_legacy_500.pt'
+New-Item -Path 'F:/CODE/!projects/so-vits-svc/pretrain/rmvpe/model.pt' -ItemType HardLink -Target 'F:/CODE/!projects/DDSP-SVC/pretrain/rmvpe/model.pt'
 '''
 import logging
 import argparse
@@ -340,31 +339,26 @@ def main():
 
     if in_file.suffix == '':
       in_file = in_file.with_suffix('.wav')
-    infer_tool.format_wav(in_file)
     for spk in spk_list:
-      kwarg = {
-        'raw_audio_path': in_file.as_posix(),
-        'spk': spk,
-        'tran': tran,
-        'slice_db': slice_db,
-        'cluster_infer_ratio': cluster_infer_ratio,
-        'auto_predict_f0': auto_predict_f0,
-        'noice_scale': noice_scale,
-        'pad_seconds': pad_seconds,
-        'clip_seconds': clip,
-        'lg_num': lg,
-        'lgr_num': lgr,
-        'f0_predictor': f0p,
-        'enhancer_adaptive_key': enhancer_adaptive_key,
-        'cr_threshold': cr_threshold,
-        'k_step': k_step,
-        'use_spk_mix': use_spk_mix,
-        'second_encoding': second_encoding,
-        'loudness_envelope_adjustment': loudness_envelope_adjustment,
-        'vocal_register_factor': vocal_register_factor,
-      }
-      audio = svc_model.slice_inference(**kwarg)
-      key = 'auto' if auto_predict_f0 else f'{tran}key'
+      audio = svc_model.slice_inference(
+        infer_tool.format_wav_to_memory(in_file),
+        spk,
+        tran,
+        slice_db,
+        cluster_infer_ratio,
+        auto_predict_f0,
+        noice_scale,
+        pad_seconds,
+        clip, lg, lgr, f0p,
+        enhancer_adaptive_key,
+        cr_threshold,
+        k_step=k_step,
+        use_spk_mix=use_spk_mix,
+        second_encoding=second_encoding,
+        loudness_envelope_adjustment=loudness_envelope_adjustment,
+        vocal_register_factor=vocal_register_factor,
+      )
+      key = '~' if auto_predict_f0 else f'{tran}'
       cluster_name = '' if cluster_infer_ratio == 0 else f'_{cluster_infer_ratio}'
       isdiffusion = 'sov'
       if shallow_diffusion:
