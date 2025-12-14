@@ -1,14 +1,13 @@
 import os
 
-import librosa
-import numpy as np
-import soundfile as sf
-import torch
-import torch.nn.functional as F
-import torch.utils.data
-from librosa.filters import mel as librosa_mel_fn
-
 os.environ["LRU_CACHE_CAPACITY"] = "3"
+import torch
+import torch.utils.data
+import numpy as np
+import librosa
+from librosa.filters import mel as librosa_mel_fn
+import soundfile as sf
+import torch.nn.functional as F
 
 
 def load_wav_to_torch(full_path, target_sr=None, return_empty_on_exception=False):
@@ -148,22 +147,17 @@ class STFT:
             pad_mode="reflect",
             normalized=False,
             onesided=True,
-            return_complex=False,
+            return_complex=True,
         )
-        # print(111,spec)
-        spec = torch.sqrt(spec.pow(2).sum(-1) + (1e-9))
+        spec = spec.abs()
         if keyshift != 0:
             size = n_fft // 2 + 1
             resize = spec.size(1)
             if resize < size:
                 spec = F.pad(spec, (0, 0, 0, size - resize))
             spec = spec[:, :size, :] * win_size / win_size_new
-
-        # print(222,spec)
         spec = torch.matmul(self.mel_basis[mel_basis_key], spec)
-        # print(333,spec)
         spec = dynamic_range_compression_torch(spec, clip_val=clip_val)
-        # print(444,spec)
         return spec
 
     def __call__(self, audiopath):
