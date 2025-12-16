@@ -220,7 +220,7 @@ def get_speech_encoder(speech_encoder, device=None, log=True, **kargs):
 def load_checkpoint(checkpoint_path, model, optimizer=None, skip_optimizer=False):
   assert os.path.isfile(checkpoint_path)
   checkpoint_dict = torch.load(checkpoint_path, map_location='cpu')
-  iteration = checkpoint_dict['iteration']
+  epoch = checkpoint_dict['iteration']
   learning_rate = checkpoint_dict['learning_rate']
   if (optimizer is not None and not skip_optimizer and checkpoint_dict['optimizer'] is not None):
     optimizer.load_state_dict(checkpoint_dict['optimizer'])
@@ -252,12 +252,11 @@ def load_checkpoint(checkpoint_path, model, optimizer=None, skip_optimizer=False
     model.module.load_state_dict(new_state_dict)
   else:
     model.load_state_dict(new_state_dict)
-  logger.info('Loaded checkpoint \'{}\' (iteration {})'.format(checkpoint_path, iteration))
-  return model, optimizer, learning_rate, iteration
+  logger.info('Loaded checkpoint \'{}\' (epoch {})'.format(checkpoint_path, epoch))
+  return model, optimizer, learning_rate, epoch
 
 
-def save_checkpoint(model, optimizer, learning_rate, iteration, checkpoint_path):
-  logger.info('Saving model and optimizer state at iteration {} to {}'.format(iteration, checkpoint_path))
+def save_checkpoint(model, optimizer, learning_rate, epoch, checkpoint_path):
   if hasattr(model, 'module'):
     state_dict = model.module.state_dict()
   else:
@@ -265,12 +264,13 @@ def save_checkpoint(model, optimizer, learning_rate, iteration, checkpoint_path)
   torch.save(
       {
           'model': state_dict,
-          'iteration': iteration,
+          'iteration': epoch,
           'optimizer': optimizer.state_dict(),
           'learning_rate': learning_rate,
       },
       checkpoint_path,
   )
+  logger.info('Saved model and optimizer state at epoch {} to {}'.format(epoch, checkpoint_path))
 
 
 def clean_checkpoints(path_to_models='logs/44k/', n_ckpts_to_keep=2, sort_by_time=True):

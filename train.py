@@ -4,6 +4,8 @@ import multiprocessing
 import os
 import time
 from pathlib import Path
+import sys
+import traceback
 
 import torch
 import torch.distributed as dist
@@ -24,7 +26,6 @@ from util import sov_utils as utils
 from util.logger import Progress
 from util.io import load_json, write_json
 from util import Config
-
 from modules import commons
 from modules.losses import (
   discriminator_loss,
@@ -108,6 +109,21 @@ def main():
   )
 
 
+def save_checkpoints(g, og, d, od, c: Config, e: int):
+  utils.save_checkpoint(
+    g, og,
+    c.train.learning_rate,
+    e,
+    os.path.join(c.model_dir, f'G_{global_step}.pth'),
+  )
+  utils.save_checkpoint(
+    d, od,
+    c.train.learning_rate,
+    e,
+    os.path.join(c.model_dir, f'D_{global_step}.pth'),
+  )
+
+
 def run(rank, n_gpus, hps: Config):
   global global_step
   if rank == 0:
@@ -119,10 +135,10 @@ def run(rank, n_gpus, hps: Config):
 
   # for pytorch on win, backend use gloo
   dist.init_process_group(
-      backend='gloo' if os.name == 'nt' else 'nccl',
-      init_method='env://',
-      world_size=n_gpus,
-      rank=rank,
+    backend='gloo' if os.name == 'nt' else 'nccl',
+    init_method='env://',
+    world_size=n_gpus,
+    rank=rank,
   )
   torch.manual_seed(hps.train.seed)
   torch.cuda.set_device(rank)
@@ -181,33 +197,34 @@ def run(rank, n_gpus, hps: Config):
 
   skip_optimizer = False
   try:
-    _, _, _, epoch_str = utils.load_checkpoint(
+    _, _, _, last_epoch = utils.load_checkpoint(
       utils.latest_checkpoint_path(hps.model_dir, 'G_*.pth', hps.train.use_pretrained),
       net_g,
       optim_g,
       skip_optimizer,
     )
     name = utils.latest_checkpoint_path(hps.model_dir, 'D_*.pth', hps.train.use_pretrained)
-    _, _, _, epoch_str = utils.load_checkpoint(
+    utils.load_checkpoint(
       name,
       net_d,
       optim_d,
       skip_optimizer,
     )
-    epoch_str = max(epoch_str, 1)
+    last_epoch = max(last_epoch, 1)
     global_step = int(name[name.rfind('_') + 1:name.rfind('.')]) + 1
-    # global_step = (epoch_str - 1) * len(train_loader)
+    # global_step = (last_epoch - 1) * len(train_loader)
   except Exception as e:
     print(f'Warning: {e}, load old checkpoint failed... ')
-    epoch_str = 1
+    last_epoch = 1
     global_step = 0
+    raise e
   if skip_optimizer:
-    epoch_str = 1
+    last_epoch = 1
     global_step = 0
 
   warmup_epoch = hps.train.warmup_epochs
-  scheduler_g = torch.optim.lr_scheduler.ExponentialLR(optim_g, gamma=hps.train.lr_decay, last_epoch=epoch_str - 2)
-  scheduler_d = torch.optim.lr_scheduler.ExponentialLR(optim_d, gamma=hps.train.lr_decay, last_epoch=epoch_str - 2)
+  scheduler_g = torch.optim.lr_scheduler.ExponentialLR(optim_g, gamma=hps.train.lr_decay, last_epoch=last_epoch - 2)
+  scheduler_d = torch.optim.lr_scheduler.ExponentialLR(optim_d, gamma=hps.train.lr_decay, last_epoch=last_epoch - 2)
 
   if use_torch_compile:
     logger.info('You are using [green]torch.compile[/green] for faster speed...')
@@ -218,7 +235,7 @@ def run(rank, n_gpus, hps: Config):
 
   print(f'training: {len(train_loader)} steps per epoch')
   with Progress() as progress:
-    for epoch in range(epoch_str, hps.train.epochs + 1):
+    for epoch in range(last_epoch, hps.train.epochs + 1):
       # set up warm-up learning rate
       if epoch <= warmup_epoch:
         for param_group in optim_g.param_groups:
@@ -226,19 +243,31 @@ def run(rank, n_gpus, hps: Config):
         for param_group in optim_d.param_groups:
           param_group['lr'] = hps.train.learning_rate / warmup_epoch * epoch
       # training
-      train_and_evaluate(
-        rank,
-        epoch,
-        hps,
-        (net_g, net_d),
-        (optim_g, optim_d),
-        # (scheduler_g, scheduler_d),
-        scaler,
-        (train_loader, eval_loader),
-        logger,
-        (writer, writer_eval),
-        progress,
-      )
+      try:
+        train_and_evaluate(
+          rank,
+          epoch,
+          hps,
+          (net_g, net_d),
+          (optim_g, optim_d),
+          # (scheduler_g, scheduler_d),
+          scaler,
+          (train_loader, eval_loader),
+          logger,
+          (writer, writer_eval),
+          progress,
+        )
+      except KeyboardInterrupt:
+        print('\n检测到 Ctrl+C，尝试在退出前保存权重...')
+        save_checkpoints(net_g, optim_g, net_d, optim_d, hps, epoch)
+        sys.exit()
+      except Exception:
+        err_log = os.path.join(hps.model_dir, 'error.log')
+        with open(err_log, 'w', encoding='utf-8') as f:
+          traceback.print_exc(file=f)
+        save_checkpoints(net_g, optim_g, net_d, optim_d, hps, epoch)
+        raise
+
       # update learning rate
       scheduler_g.step()
       scheduler_d.step()
@@ -365,38 +394,38 @@ def train_and_evaluate(
         logger.info(f'Losses: {[x.item() for x in losses]}, step: {global_step}, lr: {lr}, reference_loss: {reference_loss}')
 
         scalar_dict = {
-            'loss/g/total': loss_gen_all,
-            'loss/d/total': loss_disc_all,
-            'learning_rate': lr,
-            'grad_norm_d': grad_norm_d,
-            'grad_norm_g': grad_norm_g,
+          'loss/g/total': loss_gen_all,
+          'loss/d/total': loss_disc_all,
+          'learning_rate': lr,
+          'grad_norm_d': grad_norm_d,
+          'grad_norm_g': grad_norm_g,
         }
         scalar_dict.update({
-            'loss/g/fm': loss_fm,
-            'loss/g/mel': loss_mel,
-            'loss/g/kl': loss_kl,
-            'loss/g/lf0': loss_lf0,
+          'loss/g/fm': loss_fm,
+          'loss/g/mel': loss_mel,
+          'loss/g/kl': loss_kl,
+          'loss/g/lf0': loss_lf0,
         })
 
         # scalar_dict.update({'loss/g/{}'.format(i): v for i, v in enumerate(losses_gen)})
         # scalar_dict.update({'loss/d_r/{}'.format(i): v for i, v in enumerate(losses_disc_r)})
         # scalar_dict.update({'loss/d_g/{}'.format(i): v for i, v in enumerate(losses_disc_g)})
         image_dict = {
-            'slice/mel_org': utils.plot_spectrogram_to_numpy(y_mel[0].data.cpu().numpy()),
-            'slice/mel_gen': utils.plot_spectrogram_to_numpy(y_hat_mel[0].data.cpu().numpy()),
-            'all/mel': utils.plot_spectrogram_to_numpy(mel[0].data.cpu().numpy()),
+          'slice/mel_org': utils.plot_spectrogram_to_numpy(y_mel[0].data.cpu().numpy()),
+          'slice/mel_gen': utils.plot_spectrogram_to_numpy(y_hat_mel[0].data.cpu().numpy()),
+          'all/mel': utils.plot_spectrogram_to_numpy(mel[0].data.cpu().numpy()),
         }
 
         if net_g.module.use_automatic_f0_prediction:
           image_dict.update({
-              'all/lf0': utils.plot_data_to_numpy(
-                  lf0[0, 0, :].cpu().numpy(),
-                  pred_lf0[0, 0, :].detach().cpu().numpy(),
-              ),
-              'all/norm_lf0': utils.plot_data_to_numpy(
-                  lf0[0, 0, :].cpu().numpy(),
-                  norm_lf0[0, 0, :].detach().cpu().numpy(),
-              ),
+            'all/lf0': utils.plot_data_to_numpy(
+              lf0[0, 0, :].cpu().numpy(),
+              pred_lf0[0, 0, :].detach().cpu().numpy(),
+            ),
+            'all/norm_lf0': utils.plot_data_to_numpy(
+              lf0[0, 0, :].cpu().numpy(),
+              norm_lf0[0, 0, :].detach().cpu().numpy(),
+            ),
           })
 
         utils.summarize(
@@ -410,20 +439,7 @@ def train_and_evaluate(
         if os.path.exists(os.path.join(hps.model_dir, 'stop.txt')):
           logger.info('stop.txt found, stop training')
         evaluate(hps, net_g, eval_loader, writer_eval)
-        utils.save_checkpoint(
-            net_g,
-            optim_g,
-            hps.train.learning_rate,
-            epoch,
-            os.path.join(hps.model_dir, 'G_{}.pth'.format(global_step)),
-        )
-        utils.save_checkpoint(
-            net_d,
-            optim_d,
-            hps.train.learning_rate,
-            epoch,
-            os.path.join(hps.model_dir, 'D_{}.pth'.format(global_step)),
-        )
+        save_checkpoints(net_g, optim_g, net_d, optim_d, hps, epoch)
         keep_ckpts = getattr(hps.train, 'keep_ckpts', 0)
         if keep_ckpts > 0:
           utils.clean_checkpoints(
