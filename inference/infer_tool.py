@@ -16,11 +16,11 @@ import torch
 import torchaudio
 
 import cluster
-import utils
+from util import sov_utils as utils
 from vdecoder import Vocoder
 from inference import slicer
 from models import SynthesizerTrn
-import logger
+from util import logger
 
 logging.getLogger('matplotlib').setLevel(logging.WARNING)
 
@@ -51,17 +51,6 @@ def read_temp(file_name):
 def write_temp(file_name, data):
   with open(file_name, 'w') as f:
     f.write(json.dumps(data))
-
-
-def timeit(func):
-
-  def run(*args, **kwargs):
-    t = time.time()
-    res = func(*args, **kwargs)
-    print('executing \'%s\' costed %.3fs' % (func.__name__, time.time() - t))
-    return res
-
-  return run
 
 
 def format_wav(audio_path):

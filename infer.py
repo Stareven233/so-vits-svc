@@ -1,6 +1,26 @@
 '''
 cd D:/Code/projects/so-vits-svc
 $python = 'D:/Code/projects/RIFT-SVC/.venv/Scripts/python.exe'
+
+$name = '「少女」'
+
+1.
+$src_dir = "D:\Document\Audio\$name"
+& $python SVCFusion/fap/__main__.py slice-audio-v2 $src_dir "data/$name" --max-duration 15.0 --num-workers 2 --flat-layout --merge-short
+
+2.
+& $python -m preprocess1_config --source_dir 'data' --speech_encoder vec768l12 --vol_aug --speakers $name -n $name
+
+3.
+& $python -m preprocess2_feature --f0_predictor fcpe --filelist filelists/train.txt --num_workers 2
+& $python -m preprocess2_feature --f0_predictor fcpe --filelist filelists/val.txt --num_workers 2
+
+4.
+& $python -m train -m $name -p bf16 -e 300 --bs 12 --all_in_mem
+
+6.
+$python = 'D:/Code/projects/RIFT-SVC/.venv/Scripts/python.exe'
+cd D:/Code/projects/so-vits-svc
 $base_dir = 'D:/Document/ai-sings'
 $path = "${base_dir}/God Knows/4K高清修复音源升级God Knows_Vocals_vocals_noreverb-new-au.flac"
 $path = "${base_dir}/君は薔薇より美しい/布施明 君は薔薇より美しい 你比玫瑰更美丽_Vocals_vocals_noreverb.flac"
@@ -25,7 +45,7 @@ from inference.infer_tool import Svc
 from spkmix import spk_mix_map
 
 # from loguru import logger
-import logger
+from util import logger
 
 logging.getLogger('numba').setLevel(logging.WARNING)
 

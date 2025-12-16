@@ -4,10 +4,10 @@ from torch.nn import Conv1d, Conv2d
 from torch.nn import functional as F
 from torch.nn.utils import spectral_norm, weight_norm
 
-import utils
+from util import sov_utils as utils
 from modules import attentions, commons, modules
 from modules.commons import get_padding
-from utils import f0_to_coarse
+from util.sov_utils import f0_to_coarse
 
 
 class ResidualCouplingBlock(nn.Module):

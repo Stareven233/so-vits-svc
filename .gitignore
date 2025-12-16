@@ -150,10 +150,6 @@ results
 inference/chunks_temp.json
 logs
 hubert/checkpoint_best_legacy_500.pt
-configs/config.json
-filelists/test.txt
-filelists/train.txt
-filelists/val.txt
 .idea/
 .vscode/
 .idea/modules.xml
@@ -167,3 +163,7 @@ pretrain/
 trained/**/
 chunks_temp.json
 exp/
+data/
+filelists/
+configs/config.json
+configs/config_diff.yaml

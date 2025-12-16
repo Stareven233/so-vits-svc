@@ -2,7 +2,7 @@ import argparse
 import os
 import pickle
 
-import utils
+from util import sov_utils as utils
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

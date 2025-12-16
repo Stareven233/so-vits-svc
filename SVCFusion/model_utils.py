@@ -1,7 +1,7 @@
 from datetime import datetime
 import os
 import shutil
-from utils import Dummy; gr = Dummy()
+from util import Dummy; gr = Dummy()
 
 from SVCFusion.config import JSONReader, YAMLReader
 from SVCFusion.const_vars import (

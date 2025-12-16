@@ -1,6 +1,6 @@
 from os import system
 import os
-from utils import Dummy; gr = Dummy()
+from util import Dummy; gr = Dummy()
 
 from SVCFusion.dlc import MetaV1, pack_directory_to_dlc_file
 

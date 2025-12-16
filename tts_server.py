@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from inference import infer_tool, slicer
 
-import logger
+from util import logger
 
 app = FastAPI()
 

@@ -2,7 +2,7 @@ import io
 
 import numpy as np
 import soundfile
-from utils import Dummy
+from util import Dummy
 # from flask import Flask, request, send_file
 Flask = Dummy()
 request = Dummy()

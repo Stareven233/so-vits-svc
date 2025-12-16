@@ -7,7 +7,7 @@ import torch
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
-from utils import repeat_expand_2d
+from util.sov_utils import repeat_expand_2d
 
 
 def traverse_dir(

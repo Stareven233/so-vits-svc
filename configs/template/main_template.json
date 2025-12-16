@@ -2,17 +2,17 @@
   "train": {
     "log_interval": 200,
     "eval_interval": 800,
-    "seed": 1234,
+    "seed": 233,
     "epochs": 10000,
-    "learning_rate": 0.0001,
+    "learning_rate": 1e-04,
     "betas": [
       0.8,
       0.99
     ],
     "eps": 1e-09,
     "batch_size": 6,
-    "fp16_run": false,
-    "half_type": "fp16",
+    "fp16_run": true,
+    "half_type": "bf16",
     "lr_decay": 0.999875,
     "segment_size": 10240,
     "init_lr_ratio": 1,

@@ -1,5 +1,5 @@
 from typing import Callable, Dict
-from utils import Dummy; gr = Dummy()
+from util import Dummy; gr = Dummy()
 from SVCFusion.i18n import I
 from SVCFusion.ui.DeviceChooser import DeviceChooser
 

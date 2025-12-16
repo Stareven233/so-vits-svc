@@ -1,4 +1,4 @@
-from utils import Dummy; gr = Dummy()
+from util import Dummy; gr = Dummy()
 from loguru import logger
 
 from SVCFusion import automix

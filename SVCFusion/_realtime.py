@@ -3,7 +3,7 @@ import librosa
 import soundfile as sf
 import numpy as np
 import sounddevice as sd
-import logger
+from util import logger
 from SVCFusion.infer_utils import infer_core
 
 from scipy.signal import convolve

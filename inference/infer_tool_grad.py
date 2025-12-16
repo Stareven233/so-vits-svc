@@ -12,7 +12,7 @@ import torchaudio
 from inference import slicer
 from models import SynthesizerTrn
 
-import utils
+from util import sov_utils as utils
 
 logging.getLogger("numba").setLevel(logging.WARNING)
 logging.getLogger("matplotlib").setLevel(logging.WARNING)

@@ -12,6 +12,6 @@ praat-parselmouth==0.4.5
 tensorboard==2.19.0
 transformers==4.51.3
 pyyaml==6.0.2
-# torchcrepe
+torchcrepe
 # PySimpleGUI
 # tensorboardX

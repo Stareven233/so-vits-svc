@@ -1,4 +1,4 @@
-from utils import Dummy; gr = Dummy()
+from util import Dummy; gr = Dummy()
 
 from SVCFusion.dlc import install_dlc
 from SVCFusion.i18n import I

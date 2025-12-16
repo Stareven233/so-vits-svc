@@ -12,35 +12,38 @@ import numpy as np
 import torch
 import torch.multiprocessing as mp
 from tqdm import tqdm
+import fairseq
 
-import logger
-import utils
+torch.serialization.add_safe_globals([fairseq.data.dictionary.Dictionary])
+
+from util import logger
+from util import sov_utils as utils
 from diffusion.vocoder import Vocoder
 from modules.mel_processing import spectrogram_torch
 from diffusion.logger import utils as du
 
-logging.getLogger("numba").setLevel(logging.WARNING)
-logging.getLogger("matplotlib").setLevel(logging.WARNING)
+logging.getLogger('numba').setLevel(logging.WARNING)
+logging.getLogger('matplotlib').setLevel(logging.WARNING)
 
-hps = utils.get_hparams_from_file("configs/config.json")
-dconfig = du.load_config("configs/config_diff.yaml")
+hps = utils.get_hparams_from_file('configs/config.json')
+dconfig = du.load_config('configs/config_diff.yaml')
 sampling_rate = hps.data.sampling_rate
 hop_length = hps.data.hop_length
-speech_encoder = hps["model"]["speech_encoder"]
+speech_encoder = hps['model']['speech_encoder']
 
 
 def process_one(filename, hmodel, f0p, device, diff=False, mel_extractor=None):
     wav, sr = librosa.load(filename, sr=sampling_rate)
     audio_norm = torch.FloatTensor(wav)
     audio_norm = audio_norm.unsqueeze(0)
-    soft_path = filename + ".soft.pt"
+    soft_path = filename + '.soft.pt'
     if not os.path.exists(soft_path):
         wav16k = librosa.resample(wav, orig_sr=sampling_rate, target_sr=16000)
         wav16k = torch.from_numpy(wav16k).to(device)
         c = hmodel.encoder(wav16k)
         torch.save(c.cpu(), soft_path)
 
-    f0_path = filename + ".f0.npy"
+    f0_path = filename + '.f0.npy'
     if not os.path.exists(f0_path):
         f0_predictor = utils.get_f0_predictor(
             f0p,
@@ -52,16 +55,14 @@ def process_one(filename, hmodel, f0p, device, diff=False, mel_extractor=None):
         f0, uv = f0_predictor.compute_f0_uv(wav)
         np.save(f0_path, np.asanyarray((f0, uv), dtype=object))
 
-    spec_path = filename.replace(".wav", ".spec.pt")
+    spec_path = filename.replace('.wav', '.spec.pt')
     if not os.path.exists(spec_path):
         # Process spectrogram
         # The following code can't be replaced by torch.FloatTensor(wav)
         # because load_wav_to_torch return a tensor that need to be normalized
 
         if sr != hps.data.sampling_rate:
-            raise ValueError(
-                "{} SR doesn't match target {} SR".format(sr, hps.data.sampling_rate)
-            )
+            raise ValueError(f'{sr} SR doesn\'t match target {hps.data.sampling_rate} SR')
 
         # audio_norm = audio / hps.data.max_wav_value
 
@@ -77,20 +78,20 @@ def process_one(filename, hmodel, f0p, device, diff=False, mel_extractor=None):
         torch.save(spec, spec_path)
 
     if diff or hps.model.vol_embedding:
-        volume_path = filename + ".vol.npy"
+        volume_path = filename + '.vol.npy'
         volume_extractor = utils.Volume_Extractor(hop_length)
         if not os.path.exists(volume_path):
             volume = volume_extractor.extract(audio_norm)
             np.save(volume_path, volume.to('cpu').numpy())
 
     if diff:
-        mel_path = filename + ".mel.npy"
+        mel_path = filename + '.mel.npy'
         if not os.path.exists(mel_path) and mel_extractor is not None:
             mel_t = mel_extractor.extract(audio_norm.to(device), sampling_rate)
             mel = mel_t.squeeze().to('cpu').numpy()
             np.save(mel_path, mel)
-        aug_mel_path = filename + ".aug_mel.npy"
-        aug_vol_path = filename + ".aug_vol.npy"
+        aug_mel_path = filename + '.aug_mel.npy'
+        aug_vol_path = filename + '.aug_vol.npy'
         max_amp = float(torch.max(torch.abs(audio_norm))) + 1e-5
         max_shift = min(1, np.log10(1 / max_amp))
         log10_vol_shift = random.uniform(-1, max_shift)
@@ -99,73 +100,72 @@ def process_one(filename, hmodel, f0p, device, diff=False, mel_extractor=None):
             aug_mel_t = mel_extractor.extract(
                 audio_norm * (10**log10_vol_shift), sampling_rate, keyshift=keyshift
             )
-        aug_mel = aug_mel_t.squeeze().to("cpu").numpy()
+        aug_mel = aug_mel_t.squeeze().to('cpu').numpy()
         aug_vol = volume_extractor.extract(audio_norm * (10**log10_vol_shift))
         if not os.path.exists(aug_mel_path):
             np.save(aug_mel_path, np.asanyarray((aug_mel, keyshift), dtype=object))
         if not os.path.exists(aug_vol_path):
-            np.save(aug_vol_path, aug_vol.to("cpu").numpy())
+            np.save(aug_vol_path, aug_vol.to('cpu').numpy())
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     # def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--device", type=str, default=None)
+    parser.add_argument('-d', '--device', type=str, default=None)
     parser.add_argument(
-        "--in_dir", type=str, default=None, help="path to input dir"
+        '--in_dir', type=str, default=None, help='path to input dir'
     )
     parser.add_argument(
-        "--filelist",
+        '--filelist',
         type=str,
-        default="filelists/train.txt",
-        help="path to filelist.txt",
+        default='filelists/train.txt',
+        help='path to filelist.txt',
     )
     parser.add_argument(
-        "--use_diff", action="store_true", help="Whether to use the diffusion model"
+        '--use_diff', action='store_true', help='Whether to use the diffusion model'
     )
     parser.add_argument(
-        "--f0_predictor",
+        '--f0_predictor',
         type=str,
-        default="rmvpe",
-        help="Select F0 predictor, can select crepe,pm,dio,harvest,rmvpe,fcpe|default: pm(note: crepe is original F0 using mean filter)",
+        default='fcpe',
+        help='Select F0 predictor, can select crepe,pm,dio,harvest,rmvpe,fcpe|default: pm(note: crepe is original F0 using mean filter)',
     )
     parser.add_argument(
-        "--num_workers",
+        '--num_workers',
         type=int,
-        default="1",
-        help="Number of workers to use for ThreadPoolExecutor",
+        default='1',
+        help='Number of workers to use for ThreadPoolExecutor',
     )
 
     args = parser.parse_args()
     f0p = args.f0_predictor
     device = args.device
     if device is None:
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-    logger.info("Using device: " + str(device))
-    logger.info("Using SpeechEncoder: " + speech_encoder)
-    logger.info("Using extractor: " + f0p)
-    logger.info("Using diff Mode: " + str(args.use_diff))
+    logger.info('Using device: ' + str(device))
+    logger.info('Using SpeechEncoder: ' + speech_encoder)
+    logger.info('Using extractor: ' + f0p)
+    logger.info('Using diff Mode: ' + str(args.use_diff))
 
     if args.use_diff:
-        print("use_diff")
-        print("Loading Mel Extractor...")
+        print('use_diff')
+        print('Loading Mel Extractor...')
         mel_extractor = Vocoder(
             dconfig.vocoder.type, dconfig.vocoder.ckpt, device=device
         )
-        print("Loaded Mel Extractor.")
+        print('Loaded Mel Extractor.')
     else:
         mel_extractor = None
-    mp.set_start_method("spawn", force=True)
+    mp.set_start_method('spawn', force=True)
 
     # 加载 args.filelist 文件
     if args.in_dir is not None:
-        filenames = glob(f"{args.in_dir}/*/*.wav", recursive=True)
+        filenames = glob(f'{args.in_dir}/*/*.wav', recursive=True)
     else:
-        with open(args.filelist, "r", encoding="utf-8") as f:
+        with open(args.filelist, 'r', encoding='utf-8') as f:
             filenames = f.readlines()
-            filenames = [f.strip() for f in filenames]
+            filenames = tuple(f.strip() for f in filenames)
     hmodel = utils.get_speech_encoder(speech_encoder, device=device, log=False)
     for file in tqdm(filenames):
         process_one(file, hmodel, f0p, device, args.use_diff, mel_extractor)
-        logger.info("[!!]")

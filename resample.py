@@ -8,7 +8,7 @@ import librosa
 import numpy as np
 from scipy.io import wavfile
 
-import logger
+from util import logger
 
 
 def load_wav(wav_path):

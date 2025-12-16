@@ -6,7 +6,7 @@ import torch
 import torchaudio
 # from flask import Flask, request, send_file
 # from flask_cors import CORS
-from utils import Dummy
+from util import Dummy
 Flask = Dummy()
 request = Dummy()
 send_file = Dummy()

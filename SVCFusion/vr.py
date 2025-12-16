@@ -1,13 +1,13 @@
 import gc
 import hashlib
 import os
-from utils import Dummy; gr = Dummy()
+from util import Dummy; gr = Dummy()
 
 # from Music_Source_Separation_Training import inference as msst_inference
-from utils import Dummy
+from util import Dummy
 msst_inference = Dummy()
 
-import logger
+from util import logger
 import torch
 from SVCFusion.config import system_config
 from SVCFusion.i18n import I

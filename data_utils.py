@@ -6,9 +6,9 @@ import torch
 import torch.utils.data
 
 from modules.mel_processing import spectrogram_torch
-from utils import load_filepaths_and_text, load_wav_to_torch
+from util.sov_utils import load_filepaths_and_text, load_wav_to_torch
 
-import utils
+from util import sov_utils as utils
 
 # import h5py
 

@@ -4,7 +4,7 @@ from SVCFusion.config import system_config
 from SVCFusion.locale import text_to_locale
 from SVCFusion.ui.Form import Form
 
-from utils import Dummy; gr = Dummy()
+from util import Dummy; gr = Dummy()
 
 from SVCFusion.ui.FormTypes import FormDict
 

@@ -8,7 +8,7 @@ import yaml
 from .diffusion import GaussianDiffusion
 from .vocoder import Vocoder
 from .wavenet import WaveNet
-from utils import DotDict
+from util.sov_utils import DotDict
 
 
 def load_model_vocoder(model_path, device="cpu", config_path=None):

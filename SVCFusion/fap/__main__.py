@@ -1,5 +1,4 @@
 import click
-import richuru
 from loguru import logger
 
 from cli.resample import resample
@@ -13,6 +12,7 @@ def cli(debug: bool):
     """An audio preprocessing CLI."""
 
     if debug:
+        import richuru
         richuru.install()
         logger.info("Debug mode is on")
 

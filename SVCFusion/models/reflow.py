@@ -24,7 +24,7 @@ from ReFlowVaeSVC.reflow.extractors import F0_Extractor, Volume_Extractor, Units
 from ddspsvc.draw import main as draw_main
 from SVCFusion.exec import exec, start_with_cmd
 
-from utils import Dummy; gr = Dummy()
+from util import Dummy; gr = Dummy()
 import soundfile as sf
 
 

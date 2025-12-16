@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 import shutil
 from traceback import print_exception
-from utils import Dummy; gr = Dummy()
+from util import Dummy; gr = Dummy()
 
 from fap.utils.file import AUDIO_EXTENSIONS
 from SVCFusion.i18n import I

@@ -1,6 +1,4 @@
-import argparse
 import glob
-import json
 import logging
 import os
 import re
@@ -16,27 +14,9 @@ from scipy.io.wavfile import read
 from sklearn.cluster import MiniBatchKMeans
 from torch.nn import functional as F
 
-from SVCFusion.config import JSONReader
-
-import logger
-
-
-class Dummy:
-
-  def __getattr__(self, _):
-    return self
-
-  def __setattr__(self, _, __):
-    pass
-
-  def __getitem__(self, _):
-    return self
-
-  def __setitem__(self, _, __):
-    pass
-
-  def __call__(self, *_, **__):
-    return self
+from util.io import load_json
+from util import logger
+from util import ROOT_DIR
 
 
 class DotDict(dict):
@@ -96,10 +76,9 @@ def plot_data_to_numpy(x, y):
   plt.tight_layout()
 
   fig.canvas.draw()
-  data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
-  data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-  plt.close()
-  return data
+  img_array = np.array(fig.canvas.buffer_rgba())[..., :3]  # (H, W, 3) RGB
+  plt.close(fig)
+  return img_array
 
 
 def f0_to_coarse(f0):
@@ -349,11 +328,12 @@ def summarize(
     writer.add_audio(k, v, global_step, audio_sampling_rate)
 
 
-def latest_checkpoint_path(dir_path, regex='G_*.pth'):
+def latest_checkpoint_path(dir_path, regex='G_*.pth', pretrained=True):
   f_list = glob.glob(os.path.join(dir_path, regex))
+  if len(f_list) <= 0 and pretrained:
+    f_list = [f.as_posix() for f in (ROOT_DIR / 'pretrain/sovits4.1').glob(regex)]
   f_list.sort(key=lambda f: int(''.join(filter(str.isdigit, f))))
   x = f_list[-1]
-  print(x)
   return x
 
 
@@ -377,10 +357,10 @@ def plot_spectrogram_to_numpy(spectrogram):
   plt.tight_layout()
 
   fig.canvas.draw()
-  data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
-  data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-  plt.close()
-  return data
+  # 获取 RGBA 缓冲区 → 转为 NumPy → 提取 RGB
+  img_array = np.array(fig.canvas.buffer_rgba())[..., :3]  # (H, W, 3) RGB
+  plt.close(fig)
+  return img_array
 
 
 def plot_alignment_to_numpy(alignment, info=None):
@@ -406,10 +386,9 @@ def plot_alignment_to_numpy(alignment, info=None):
   plt.tight_layout()
 
   fig.canvas.draw()
-  data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
-  data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-  plt.close()
-  return data
+  img_array = np.array(fig.canvas.buffer_rgba())[..., :3]  # (H, W, 3) RGB
+  plt.close(fig)
+  return img_array
 
 
 def load_wav_to_torch(full_path):
@@ -423,43 +402,9 @@ def load_filepaths_and_text(filename, split='|'):
   return filepaths_and_text
 
 
-def get_hparams(init=True):
-  parser = argparse.ArgumentParser()
-  parser.add_argument(
-      '-c',
-      '--config',
-      type=str,
-      default='./configs/config.json',
-      help='JSON file for configuration',
-  )
-  parser.add_argument('-m', '--model', type=str, required=True, help='Model name')
-
-  args = parser.parse_args()
-  model_dir = os.path.join('./exp', args.model)
-
-  if not os.path.exists(model_dir):
-    os.makedirs(model_dir)
-
-  config_path = args.config
-  config_save_path = os.path.join(model_dir, 'config.json')
-  if init:
-    with JSONReader(config_save_path) as f:
-      config = f
-    with open(config_save_path, 'w') as f:
-      json.dump(config, f, indent=4)
-  else:
-    with JSONReader(config_path) as f:
-      config = f
-
-  hparams = HParams(**config)
-  hparams.model_dir = model_dir
-  return hparams
-
-
 def get_hparams_from_dir(model_dir):
   config_save_path = os.path.join(model_dir, 'config.json')
-  with JSONReader(config_save_path) as f:
-    config = f
+  config = load_json(config_save_path)
 
   hparams = HParams(**config)
   hparams.model_dir = model_dir
@@ -467,8 +412,7 @@ def get_hparams_from_dir(model_dir):
 
 
 def get_hparams_from_file(config_path, infer_mode=False):
-  with JSONReader(config_path) as f:
-    config = f
+  config = load_json(config_path)
   hparams = HParams(**config) if not infer_mode else InferHParams(**config)
   return hparams
 
@@ -491,8 +435,6 @@ def check_git_hash(model_dir):
 
 
 def get_logger(model_dir, filename='train.log'):
-  import logger
-
   logger.addLogger(os.path.join(model_dir, filename))
   # logger = logging.getLogger(os.path.basename(model_dir))
   # logger.setLevel(logging.DEBUG)

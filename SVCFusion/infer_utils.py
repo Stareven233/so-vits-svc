@@ -1,5 +1,5 @@
 import hashlib
-from utils import Dummy
+from util import Dummy
 gr = Dummy()
 import librosa
 from SVCFusion.file import getResultFileName, make_dirs

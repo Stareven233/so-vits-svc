@@ -11,7 +11,7 @@ from itertools import chain
 from pathlib import Path
 
 # os.system("wget -P cvec/ https://huggingface.co/spaces/innnky/nanami/resolve/main/checkpoint_best_legacy_500.pt")
-from utils import Dummy; gr = Dummy()
+from util import Dummy; gr = Dummy()
 import librosa
 import numpy as np
 import soundfile
@@ -21,7 +21,7 @@ from compress_model import removeOptimizer
 # from edgetts.tts_voices import SUPPORTED_LANGUAGES
 SUPPORTED_LANGUAGES = []
 from inference.infer_tool import Svc
-from utils import mix_model
+from util.sov_utils import mix_model
 
 logging.getLogger("numba").setLevel(logging.WARNING)
 logging.getLogger("markdown_it").setLevel(logging.WARNING)

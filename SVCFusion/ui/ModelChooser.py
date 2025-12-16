@@ -1,7 +1,7 @@
 import os
 from traceback import print_exc
 from typing import Callable, Dict, TypedDict
-from utils import Dummy; gr = Dummy()
+from util import Dummy; gr = Dummy()
 from loguru import logger
 from natsort import natsorted
 from SVCFusion.const_vars import WORK_DIR_PATH

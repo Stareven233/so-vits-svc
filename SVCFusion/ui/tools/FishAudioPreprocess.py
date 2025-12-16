@@ -1,5 +1,5 @@
 import os
-from utils import Dummy; gr = Dummy()
+from util import Dummy; gr = Dummy()
 
 from SVCFusion.dataset_utils import resample, slice_audio, to_wav
 from SVCFusion.i18n import I

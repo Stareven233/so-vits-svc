@@ -1,4 +1,4 @@
-from utils import Dummy; gr = Dummy()
+from util import Dummy; gr = Dummy()
 import librosa
 from typing import Optional, Any
 
@@ -11,7 +11,7 @@ from SVCFusion.inference.vocoders import (
     get_vocoder_keys,
     set_shared_vocoder,
 )
-from utils import get_f0_predictor
+from util.sov_utils import get_f0_predictor
 
 import soundfile as sf
 import torch

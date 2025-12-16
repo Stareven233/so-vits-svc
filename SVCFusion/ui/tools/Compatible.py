@@ -1,7 +1,7 @@
 import json
 import os
 import shutil
-from utils import Dummy; gr = Dummy()
+from util import Dummy; gr = Dummy()
 
 from SVCFusion.config import JSONReader
 from SVCFusion.i18n import I

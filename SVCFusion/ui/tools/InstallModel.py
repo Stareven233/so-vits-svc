@@ -1,5 +1,5 @@
 import os
-from utils import Dummy; gr = Dummy()
+from util import Dummy; gr = Dummy()
 import torch
 import yaml
 from fap.utils.file import make_dirs

@@ -2,7 +2,7 @@ from collections import OrderedDict
 
 import torch
 
-import utils
+from util import sov_utils as utils
 from models import SynthesizerTrn
 
 

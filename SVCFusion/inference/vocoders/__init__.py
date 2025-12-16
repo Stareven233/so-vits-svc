@@ -5,7 +5,7 @@ import torch
 from torchaudio.transforms import Resample
 
 from SVCFusion.i18n import I
-from utils import Dummy; gr = Dummy()
+from util import Dummy; gr = Dummy()
 
 from .nsf_hifigan.nvSTFT import STFT
 from .nsf_hifigan.models import load_model, load_config

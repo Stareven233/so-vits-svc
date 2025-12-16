@@ -1,7 +1,7 @@
 import torch
 from fairseq import checkpoint_utils
 
-import logger
+from util import logger
 from vencoder.encoder import SpeechEncoder
 
 

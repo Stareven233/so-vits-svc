@@ -3,16 +3,14 @@ import json
 import os
 import pickle
 import sys
-
 import yaml
-from compress_model import copyStateDict
-from models import SynthesizerTrn
-from SVCFusion.fap.utils.file import make_dirs
-from SVCFusion.exec import executable
 import time
-
 import torch
 import torchaudio
+import soundfile as sf
+
+from compress_model import copyStateDict
+from models import SynthesizerTrn
 from inference import infer_tool
 from inference.infer_tool import Svc
 from SVCFusion.config import JSONReader, YAMLReader, applyChanges, system_config
@@ -21,12 +19,13 @@ from SVCFusion.exec import exec, start_with_cmd
 from SVCFusion.i18n import I
 from SVCFusion.model_utils import get_pretrain_models_form_item, load_pretrained
 from SVCFusion.ui.FormTypes import FormDictInModelClass
+from SVCFusion.fap.utils.file import make_dirs
+from SVCFusion.exec import executable
 from .common import common_infer_form, common_preprocess_form
-import logger, utils
-from utils import Dummy; gr = Dummy()
+from util import logger, utils
+from util import Dummy
 
-
-import soundfile as sf
+gr = Dummy()
 
 
 def check_files(directory, use_diff=False):

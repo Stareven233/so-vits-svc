@@ -14,7 +14,7 @@ from SVCFusion.models.inited import (
     model_list,
     model_name_list,
 )
-from utils import Dummy; gr = Dummy()
+from util import Dummy; gr = Dummy()
 
 
 class ModelManager:
