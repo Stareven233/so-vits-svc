@@ -16,7 +16,8 @@ $src_dir = "D:\Document\Audio\$name"
 & $python -m preprocess2_feature --f0_predictor fcpe --filelist filelists/val.txt --num_workers 2
 
 4.
-& $python -m train -m $name -p bf16 -e 300 --bs 12 --all_in_mem
+& $python -m train -m $name -p bf16 -e 150 -bs 14
+& $python -m train -m $name -p bf16 -e 150 -bs 14 --all_in_mem
 
 6.
 $python = 'D:/Code/projects/RIFT-SVC/.venv/Scripts/python.exe'

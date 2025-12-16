@@ -58,14 +58,14 @@ def handle_configs(init=True):
     '-p',
     '--precision',
     type=str,
-    default='bf16',
+    default=None,
     choices=('fp32', 'fp16', 'bf16', ),
     help='amp_dtype',
   )
   parser.add_argument('-e', '--epochs', type=int, default=None)
   parser.add_argument('--warmup_epochs', type=int, default=None)
-  parser.add_argument('--lr', type=float, default=None)
-  parser.add_argument('--bs', type=int, default=None)
+  parser.add_argument('-lr', '--learning_rate', type=float, default=None)
+  parser.add_argument('-bs', '--batch_size', type=int, default=None)
   parser.add_argument('--n_gpus', type=int, default=None)
   parser.add_argument('--num_workers', type=int, default=None)
   parser.add_argument('--all_in_mem', action='store_true', default=False, help='加载所有数据集到内存中')
@@ -80,24 +80,15 @@ def handle_configs(init=True):
     config_path = args.config
   config = Config(load_json(config_path))
 
+  config.train.update({k: v for k, v in vars(args).items() if v is not None})
   config.model_dir = model_dir.as_posix()
-  t = config.train
-  config.train.update(dict(
-    fp16_run=args.precision.endswith('16'),
-    half_type=args.precision,
-    epochs=args.epochs or t.epochs,
-    warmup_epochs=args.warmup_epochs or t.warmup_epochs,
-    learning_rate=args.lr or t.learning_rate,
-    batch_size=args.bs or t.batch_size,
-    n_gpus=args.n_gpus,
-    all_in_mem=args.all_in_mem,
-    use_pretrained=args.use_pretrained,
-  ))
+  if args.precision is not None:
+    config.train.update({
+      'fp16_run': args.precision.endswith('16'),
+      'half_type': args.precision,
+    })
 
   write_json(config_path, config.as_dict(), indent=2)
-  if args.num_workers is not None:
-    t.num_workers = args.num_workers
-  config.use_torch_compile = args.use_torch_compile
   return config
 
 
@@ -139,6 +130,7 @@ def run(rank, n_gpus, hps: Config):
   all_in_mem = hps.train.all_in_mem  # If you have enough memory, turn on this option to avoid disk IO and speed up training.
   train_dataset = TextAudioSpeakerLoader(hps.data.training_files, hps, all_in_mem=all_in_mem)
   num_workers = (hps.train.num_workers if hasattr(hps.train, 'num_workers') else 2 if multiprocessing.cpu_count() > 4 else multiprocessing.cpu_count())
+  use_torch_compile = int(os.environ.get('USE_TORCH_COMPILE', 0)) == 1 or hps.train.use_torch_compile
   if all_in_mem:
     num_workers = 1
   train_loader = DataLoader(
@@ -147,6 +139,7 @@ def run(rank, n_gpus, hps: Config):
     shuffle=False,
     pin_memory=True,
     persistent_workers=True,
+    drop_last=use_torch_compile,
     batch_size=hps.train.batch_size,
     collate_fn=collate_fn,
   )
@@ -161,6 +154,7 @@ def run(rank, n_gpus, hps: Config):
       drop_last=False,
       collate_fn=collate_fn,
     )
+  scaler = GradScaler(enabled=hps.train.fp16_run)
 
   net_g = SynthesizerTrn(
     hps.data.filter_length // 2 + 1,
@@ -173,14 +167,14 @@ def run(rank, n_gpus, hps: Config):
     hps.train.learning_rate,
     betas=hps.train.betas,
     eps=hps.train.eps,
-    fused=True,
+    fused=not scaler.is_enabled(),
   )
   optim_d = torch.optim.AdamW(
     net_d.parameters(),
     hps.train.learning_rate,
     betas=hps.train.betas,
     eps=hps.train.eps,
-    fused=True,
+    fused=not scaler.is_enabled(),
   )
   net_g = DDP(net_g, device_ids=[rank])  # , find_unused_parameters=True)
   net_d = DDP(net_d, device_ids=[rank])
@@ -215,16 +209,13 @@ def run(rank, n_gpus, hps: Config):
   scheduler_g = torch.optim.lr_scheduler.ExponentialLR(optim_g, gamma=hps.train.lr_decay, last_epoch=epoch_str - 2)
   scheduler_d = torch.optim.lr_scheduler.ExponentialLR(optim_d, gamma=hps.train.lr_decay, last_epoch=epoch_str - 2)
 
-  use_torch_compile = int(os.environ.get('USE_TORCH_COMPILE', 0)) == 1 or hps.use_torch_compile
   if use_torch_compile:
-    global train_and_evaluate
-    logger.info('You are using [green]torch.compile[/green] for faster speed, it\'s still a [red]beta[/red] feature.')
-    logger.info('If you has any problem, please issues it with your log at [green]https://github.com/huanlinoto/so-vits-svc.[/green]')
+    logger.info('You are using [green]torch.compile[/green] for faster speed...')
     logger.info('Compiling the train_and_evaluate function...')
-    train_and_evaluate = torch.compile(train_and_evaluate)
-    logger.info('Compiled!')
+    net_g = torch.compile(net_g)
+    net_d = torch.compile(net_d)
+    logger.info('Compiled net_g and net_d!')
 
-  scaler = GradScaler(enabled=hps.train.fp16_run)
   print(f'training: {len(train_loader)} steps per epoch')
   with Progress() as progress:
     for epoch in range(epoch_str, hps.train.epochs + 1):
