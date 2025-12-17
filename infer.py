@@ -1,4 +1,4 @@
-'''
+r'''
 cd D:/Code/projects/so-vits-svc
 $python = 'D:/Code/projects/RIFT-SVC/.venv/Scripts/python.exe'
 
@@ -16,10 +16,17 @@ $src_dir = "D:\Document\Audio\$name"
 & $python -m preprocess2_feature --f0_predictor fcpe --filelist filelists/val.txt --num_workers 2
 
 4.
-& $python -m train -m $name -p bf16 -e 150 -bs 14
-& $python -m train -m $name -p bf16 -e 150 -bs 14 --all_in_mem
+& $python -m train -m $name -p bf16 -e 180 -bs 14
+& $python -m train -m $name -p bf16 -e 120 -bs 14 --all_in_mem
+
+5.
+tensorboard --logdir "exp/$name"
 
 6.
+$path = "D:/Document/ai-sings/君は薔薇より美しい/布施明 君は薔薇より美しい 你比玫瑰更美丽_Vocals_vocals_noreverb.flac"
+& $python infer.py -m 'exp/「少女」' -i $path -t 0
+
+
 $python = 'D:/Code/projects/RIFT-SVC/.venv/Scripts/python.exe'
 cd D:/Code/projects/so-vits-svc
 $base_dir = 'D:/Document/ai-sings'
@@ -52,19 +59,19 @@ logging.getLogger('numba').setLevel(logging.WARNING)
 
 
 def getLastestCheckpoint(m_dir: Path):
-  files = [f.as_posix() for f in m_dir.iterdir() if f.endswith('.pth') and f.startswith('G_')]
+  files = tuple(f for f in m_dir.iterdir() if f.suffix == '.pth' and f.stem.startswith('G_'))
   if len(files) == 0:
     logger.error(f'no checkpoint in {m_dir}')
     return None
   latest_file = max(files)
-  return m_dir / latest_file
+  return latest_file
 
 
 def main():
   parser = argparse.ArgumentParser(description='sovits4 inference')
 
   # 一定要设置的部分
-  parser.add_argument('-m', '--model_path', type=str, default='exp/default/{lastest}', help='模型路径')
+  parser.add_argument('-m', '--model_path', type=Path, required=True, help='模型路径/目录')
   parser.add_argument(
       '-c',
       '--config_path',
@@ -85,8 +92,8 @@ def main():
       '--spk_list',
       type=str,
       nargs='+',
-      default=['buyizi'],
-      help='合成目标说话人名称',
+      default=None,
+      help='合成目标说话人名称，默认取配置中第一个说话人',
   )
 
   # 可选项部分
@@ -290,6 +297,7 @@ def main():
 
   args = parser.parse_args()
 
+  model_path = args.model_path
   trans = args.trans
   spk_list = args.spk_list
   slice_db = args.slice_db
@@ -314,10 +322,10 @@ def main():
   loudness_envelope_adjustment = args.loudness_envelope_adjustment  # default: 1
   vocal_register_factor = 2**(args.vocal_register_shift_key / 12)
 
-  model_path = Path(args.model_path)
-  if '{lastest}' in model_path.stem:
-    model_path = getLastestCheckpoint(model_path.parent)
+  if model_path.is_dir():
+    model_path = getLastestCheckpoint(model_path)
     logger.info(f'Auto choose {model_path}')
+  assert model_path.is_file(), f'非法模型权重: "{model_path}"'
 
   if (config_path := args.config_path) is None:
     config_path = model_path.with_name('config.json').as_posix()
@@ -353,6 +361,8 @@ def main():
     use_spk_mix = False
   if use_spk_mix:
     spk_list = [spk_mix_map]
+  if spk_list is None:
+    spk_list = tuple(svc_model.config.spk.keys())[:1]
 
   infer_tool.fill_a_to_b(trans, args.input)
   for in_file, tran in zip(args.input, trans):

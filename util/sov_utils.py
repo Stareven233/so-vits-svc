@@ -6,6 +6,7 @@ import subprocess
 import sys
 import traceback
 from multiprocessing import cpu_count
+from pathlib import Path
 
 import librosa
 import numpy as np
@@ -328,10 +329,10 @@ def summarize(
     writer.add_audio(k, v, global_step, audio_sampling_rate)
 
 
-def latest_checkpoint_path(dir_path, regex='G_*.pth', pretrained=True):
+def latest_checkpoint_path(dir_path, pretrained_path:Path=None, regex='G_*.pth'):
   f_list = glob.glob(os.path.join(dir_path, regex))
-  if len(f_list) <= 0 and pretrained:
-    f_list = [f.as_posix() for f in (ROOT_DIR / 'pretrain/sovits4.1').glob(regex)]
+  if len(f_list) <= 0 and isinstance(pretrained_path, Path) and pretrained_path.is_dir():
+    f_list = [f.as_posix() for f in pretrained_path.glob(regex)]
   f_list.sort(key=lambda f: int(''.join(filter(str.isdigit, f))))
   x = f_list[-1]
   return x

@@ -161,7 +161,7 @@ class Config(Namespace):
   OmegaConf的简化版
   '''
 
-  def __init__(self, args=None, /, **kwargs):
+  def __init__(self, args, /, **kwargs):
     # args: dict|str|Path|Sequence|None
     if args is not None and not isinstance(args, (dict, str, Path, Sequence,)):
       raise TypeError(f'cannot use {type(args)=}: "{args}" to init {self.__class__.__name__}')
@@ -171,7 +171,7 @@ class Config(Namespace):
     if isinstance(args, Sequence) and len(args) > 0:
       for path in args:
         if not isinstance(path, Path):
-          path = Path(Path)
+          path = Path(path)
         kwargs |= self.load_yaml(path)
       args = None
 

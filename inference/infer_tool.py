@@ -21,6 +21,7 @@ from vdecoder import Vocoder
 from inference import slicer
 from models import SynthesizerTrn
 from util import logger
+from util import Config
 
 logging.getLogger('matplotlib').setLevel(logging.WARNING)
 
@@ -165,17 +166,17 @@ class Svc:
     else:
       self.dev = torch.device(device)
     self.net_g_ms = None
-    if not self.only_diffusion:
-      self.hps_ms = utils.get_hparams_from_file(config_path, True)
-      self.target_sample = self.hps_ms.data.sampling_rate
-      self.hop_size = self.hps_ms.data.hop_length
-      self.spk2id = self.hps_ms.spk
-      self.unit_interpolate_mode = (self.hps_ms.data.unit_interpolate_mode if self.hps_ms.data.unit_interpolate_mode is not None else 'left')
-      self.vol_embedding = (self.hps_ms.model.vol_embedding if self.hps_ms.model.vol_embedding is not None else False)
-      self.speech_encoder = (self.hps_ms.model.speech_encoder if self.hps_ms.model.speech_encoder is not None else 'vec768l12')
-
+    self.config = Config(config_path)
     self.nsf_hifigan_enhance = nsf_hifigan_enhance
     self.vocoder = Vocoder(vocoder_type, vocoder_ckpt, device=device)
+
+    if not self.only_diffusion:
+      self.target_sample = self.config.data.sampling_rate
+      self.hop_size = self.config.data.hop_length
+      self.spk2id = self.config.spk
+      self.unit_interpolate_mode = (self.config.data.unit_interpolate_mode if self.config.data.unit_interpolate_mode is not None else 'left')
+      self.vol_embedding = (self.config.model.vol_embedding if self.config.model.vol_embedding is not None else False)
+      self.speech_encoder = (self.config.model.speech_encoder if self.config.model.speech_encoder is not None else 'vec768l12')
 
     if self.shallow_diffusion or self.only_diffusion:
       if os.path.exists(diffusion_ckpt) and os.path.exists(diffusion_ckpt):
@@ -222,9 +223,9 @@ class Svc:
   def load_model(self, spk_mix_enable=False):
     # get model configuration
     self.net_g_ms = SynthesizerTrn(
-        self.hps_ms.data.filter_length // 2 + 1,
-        self.hps_ms.train.segment_size // self.hps_ms.data.hop_length,
-        **self.hps_ms.model,
+        self.config.data.filter_length // 2 + 1,
+        self.config.train.segment_size // self.config.data.hop_length,
+        **self.config.model,
     )
     utils.load_checkpoint(self.net_g_path, self.net_g_ms, None)
     self.dtype = list(self.net_g_ms.parameters())[0].dtype
@@ -446,7 +447,7 @@ class Svc:
           audio[None, :],
           self.target_sample,
           f0[:, :, None],
-          self.hps_ms.data.hop_length,
+          self.config.data.hop_length,
           adaptive_key=enhancer_adaptive_key,
       )
     if loudness_envelope_adjustment != 1:

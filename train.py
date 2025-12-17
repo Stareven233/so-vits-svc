@@ -70,7 +70,10 @@ def handle_configs(init=True):
   parser.add_argument('--n_gpus', type=int, default=None)
   parser.add_argument('--num_workers', type=int, default=None)
   parser.add_argument('--all_in_mem', action='store_true', default=False, help='加载所有数据集到内存中')
-  parser.add_argument('--use_pretrained', type=bool, default=True, help='是否使用预训练模型')
+  parser.add_argument(
+    '--pretrained_path', type=Path, default=Path('pretrain/sovits4.1'), 
+    help='预训练模型路径，设空则不使用，且优先加载训练目录的已有权重。要求里面的预训练权重遵循 (G|D)_\d+.pth 的格式'
+  )
   parser.add_argument('--use_torch_compile', action='store_true', default=False)
 
   args = parser.parse_args()
@@ -198,12 +201,12 @@ def run(rank, n_gpus, hps: Config):
   skip_optimizer = False
   try:
     _, _, _, last_epoch = utils.load_checkpoint(
-      utils.latest_checkpoint_path(hps.model_dir, 'G_*.pth', hps.train.use_pretrained),
+      utils.latest_checkpoint_path(hps.model_dir, hps.train.pretrained_path, 'G_*.pth'),
       net_g,
       optim_g,
       skip_optimizer,
     )
-    name = utils.latest_checkpoint_path(hps.model_dir, 'D_*.pth', hps.train.use_pretrained)
+    name = utils.latest_checkpoint_path(hps.model_dir, hps.train.pretrained_path, 'D_*.pth')
     utils.load_checkpoint(
       name,
       net_d,
@@ -271,6 +274,9 @@ def run(rank, n_gpus, hps: Config):
       # update learning rate
       scheduler_g.step()
       scheduler_d.step()
+
+  print('\n保存最后一个epoch权重...')
+  save_checkpoints(net_g, optim_g, net_d, optim_d, hps, epoch)
 
 
 def train_and_evaluate(
