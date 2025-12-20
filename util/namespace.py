@@ -150,6 +150,8 @@ class Namespace:
       v = ret[k]
       if isinstance(v, self.__class__):
         ret[k] = v.as_dict()
+      elif isinstance(v, Path):
+        ret[k] = v.as_posix()
     return ret
 
   def copy(self):
