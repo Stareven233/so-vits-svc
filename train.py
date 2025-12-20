@@ -69,12 +69,17 @@ def handle_configs(init=True):
   parser.add_argument('-bs', '--batch_size', type=int, default=None)
   parser.add_argument('--n_gpus', type=int, default=None)
   parser.add_argument('--num_workers', type=int, default=None)
+  parser.add_argument('--eval_interval', type=int, default=None)
   parser.add_argument('--all_in_mem', action='store_true', default=False, help='加载所有数据集到内存中')
   parser.add_argument(
     '--pretrained_path', type=Path, default=Path('pretrain/sovits4.1'), 
-    help='预训练模型路径，设空则不使用，且优先加载训练目录的已有权重。要求里面的预训练权重遵循 (G|D)_\d+.pth 的格式'
+    help='预训练模型路径，设空则不使用，且优先加载训练目录的已有权重。要求里面的预训练权重遵循 (G|D)_\\d+.pth 的格式'
   )
-  parser.add_argument('--use_torch_compile', action='store_true', default=False)
+  parser.add_argument(
+    '--torch_compile_mode', type=str, default=None,
+    choices=('default', 'reduce-overhead', 'max-autotune', 'max-autotune-no-cudagraphs', ),
+    help='Windows下需安装Visual Studio Tools 且在 Command Prompt for VS 20xx 中运行，且首次编译很慢（max-autotune 10min左右）'
+  )
 
   args = parser.parse_args()
   model_dir = Path('./exp', args.model)
@@ -149,7 +154,7 @@ def run(rank, n_gpus, hps: Config):
   all_in_mem = hps.train.all_in_mem  # If you have enough memory, turn on this option to avoid disk IO and speed up training.
   train_dataset = TextAudioSpeakerLoader(hps.data.training_files, hps, all_in_mem=all_in_mem)
   num_workers = (hps.train.num_workers if hasattr(hps.train, 'num_workers') else 2 if multiprocessing.cpu_count() > 4 else multiprocessing.cpu_count())
-  use_torch_compile = int(os.environ.get('USE_TORCH_COMPILE', 0)) == 1 or hps.train.use_torch_compile
+  compile_mode = hps.train.torch_compile_mode
   if all_in_mem:
     num_workers = 1
   train_loader = DataLoader(
@@ -158,7 +163,7 @@ def run(rank, n_gpus, hps: Config):
     shuffle=False,
     pin_memory=True,
     persistent_workers=True,
-    drop_last=use_torch_compile,
+    drop_last=compile_mode is not None,
     batch_size=hps.train.batch_size,
     collate_fn=collate_fn,
   )
@@ -229,11 +234,13 @@ def run(rank, n_gpus, hps: Config):
   scheduler_g = torch.optim.lr_scheduler.ExponentialLR(optim_g, gamma=hps.train.lr_decay, last_epoch=last_epoch - 2)
   scheduler_d = torch.optim.lr_scheduler.ExponentialLR(optim_d, gamma=hps.train.lr_decay, last_epoch=last_epoch - 2)
 
-  if use_torch_compile:
+  if compile_mode is not None:
     logger.info('You are using [green]torch.compile[/green] for faster speed...')
-    logger.info('Compiling the train_and_evaluate function...')
-    net_g = torch.compile(net_g)
-    net_d = torch.compile(net_d)
+    logger.info('Compiling the generator and discriminator...')
+    net_g = torch.compile(net_g, mode=compile_mode)
+    net_d = torch.compile(net_d, mode=compile_mode)
+    # 在训练开始前编译优化器的step函数 optim_g optim_d, wait for muon
+    # optimizer.step = torch.compile(optimizer.step, mode=compile_mode)
     logger.info('Compiled net_g and net_d!')
 
   print(f'training: {len(train_loader)} steps per epoch')
