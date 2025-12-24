@@ -3,37 +3,43 @@ cd D:/Code/projects/so-vits-svc
 $python = 'D:/Code/projects/RIFT-SVC/.venv/Scripts/python.exe'
 
 $name = '「少女」'
+$name = 'aino'
+$name = 'fritia'
 
 1.
 $src_dir = "D:\Document\Audio\$name"
-& $python SVCFusion/fap/__main__.py slice-audio-v2 $src_dir "data/$name" --max-duration 15.0 --num-workers 2 --flat-layout --merge-short
+& $python util/fap/main.py slice-audio-v2 $src_dir "data/$name" --max-duration 15.0 --num-workers 2 --flat-layout --merge-short
 
 2.
-& $python -m preprocess1_config --source_dir 'data' --speech_encoder vec768l12 --vol_aug --speakers $name -n $name
+& $python -m preprocess1_config -n $name --source_dir 'data' --speech_encoder vec768l12 --vol_aug --speakers $name
 
 3.
 & $python -m preprocess2_feature --f0_predictor fcpe --filelist filelists/train.txt --num_workers 2
 & $python -m preprocess2_feature --f0_predictor fcpe --filelist filelists/val.txt --num_workers 2
 
 4.
-& $python -m train -m $name -p bf16 -e 180 -bs 14
+D:/Code/projects/RIFT-SVC/.venv/Scripts/python.exe -m train -m fritia -p bf16 -e 350 -bs 14 --eval_interval 1000 --torch_compile_mode default
+& $python -m train -m $name -p bf16 -e 350 -bs 14 --eval_interval 1000 --torch_compile_mode default
 & $python -m train -m $name -p bf16 -e 120 -bs 14 --all_in_mem
 
 5.
 tensorboard --logdir "exp/$name"
 
 6.
-$path = "D:/Document/ai-sings/君は薔薇より美しい/布施明 君は薔薇より美しい 你比玫瑰更美丽_Vocals_vocals_noreverb.flac"
-& $python infer.py -m 'exp/「少女」' -i $path -t 0
+$path = "D:/Document/ai-sings/新月的摇篮曲 (其一)  伴月同眠/哥伦比娅 伴月同眠 - 测试服废案_Vocals_vocals_noreverb.flac"
+$path = "D:\Document\ai-sings\春庭雪\4k无损春庭雪橙翼_Vocals_vocals_noreverb.flac"
+& $python infer.py -m exp/$name -i $path -t 4
 
 
 $python = 'D:/Code/projects/RIFT-SVC/.venv/Scripts/python.exe'
 cd D:/Code/projects/so-vits-svc
-$base_dir = 'D:/Document/ai-sings'
-$path = "${base_dir}/God Knows/4K高清修复音源升级God Knows_Vocals_vocals_noreverb-new-au.flac"
-$path = "${base_dir}/君は薔薇より美しい/布施明 君は薔薇より美しい 你比玫瑰更美丽_Vocals_vocals_noreverb.flac"
-$path = "${base_dir}/TAIDADA/TAIDADA_反相不纯人声_Vocals_vocals_noreverb.flac"
-& $python infer.py -m 'exp/megumin/G_59200.pth' -i $path -t 0 -s 'megumin'
+$name = 'fritia'
+$indir = 'D:/Document/ai-sings'
+$path = "${indir}/God Knows/4K高清修复音源升级God Knows_Vocals_vocals_noreverb-new-au.flac"
+$path = "${indir}/君は薔薇より美しい/布施明 君は薔薇より美しい 你比玫瑰更美丽_Vocals_vocals_noreverb.flac"
+$path = "${indir}/TAIDADA/TAIDADA_反相不纯人声_Vocals_vocals_noreverb.flac"
+$path = "$indir\心愿便利贴\心愿便利贴-王欣宇_vocals_noreverb.flac"
+& $python infer.py -m exp/$name -i $path -t 0
 
 New-Item -Path 'F:/CODE/!projects/so-vits-svc/pretrain/contentvec/checkpoint_best_legacy_500.pt' -ItemType HardLink -Target 'F:/CODE/!projects/DDSP-SVC/pretrain/contentvec/checkpoint_best_legacy_500.pt'
 New-Item -Path 'F:/CODE/!projects/so-vits-svc/pretrain/rmvpe/model.pt' -ItemType HardLink -Target 'F:/CODE/!projects/DDSP-SVC/pretrain/rmvpe/model.pt'
@@ -41,6 +47,7 @@ New-Item -Path 'F:/CODE/!projects/so-vits-svc/pretrain/rmvpe/model.pt' -ItemType
 import logging
 import argparse
 from pathlib import Path
+import re
 
 import soundfile
 import torch
@@ -56,6 +63,7 @@ from spkmix import spk_mix_map
 from util import logger
 
 logging.getLogger('numba').setLevel(logging.WARNING)
+ckpt_step_patten = re.compile(r'(?<=G_)\d+')  # G_16800.pth
 
 
 def getLastestCheckpoint(m_dir: Path):
@@ -392,13 +400,18 @@ def main():
       key = '~' if auto_predict_f0 else f'{tran}'
       cluster_name = '' if cluster_infer_ratio == 0 else f'_{cluster_infer_ratio}'
       isdiffusion = 'sov'
+      m = model_path.stem
       if shallow_diffusion:
         isdiffusion = 'sovdiff'
       if only_diffusion:
         isdiffusion = 'diff'
+        m = diffusion_model_path
       if use_spk_mix:
         spk = 'spk_mix'
-      out_file = in_file.with_name(f'{in_file.stem}_{spk}_{isdiffusion}@{key}k{cluster_name}_{args.vocal_register_shift_key}vk.{wav_format}')
+        # rift@「少女」_4.0ks_0k_-60.0st
+      m = ckpt_step_patten.search(m)
+      ks = int(m.group(0)) / 1000
+      out_file = in_file.with_name(f'{in_file.stem}_{isdiffusion}@{spk}_{ks:.2f}ks_{key}k{cluster_name}_{args.vocal_register_shift_key}vk.{wav_format}')
       soundfile.write(out_file, audio, svc_model.target_sample, format=wav_format)
       svc_model.clear_empty()
 
