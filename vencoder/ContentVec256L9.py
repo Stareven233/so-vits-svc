@@ -1,6 +1,7 @@
 import torch
 from fairseq import checkpoint_utils
 
+from util import logger
 from vencoder.encoder import SpeechEncoder
 
 
@@ -12,7 +13,6 @@ class ContentVec256L9(SpeechEncoder):
         log=True,
     ):
         super().__init__()
-        import logger
 
         if log:
             logger.info("load model(s) from {}".format(vec_path))

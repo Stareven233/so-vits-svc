@@ -174,9 +174,9 @@ class Svc:
       self.target_sample = self.config.data.sampling_rate
       self.hop_size = self.config.data.hop_length
       self.spk2id = self.config.spk
-      self.unit_interpolate_mode = (self.config.data.unit_interpolate_mode if self.config.data.unit_interpolate_mode is not None else 'left')
-      self.vol_embedding = (self.config.model.vol_embedding if self.config.model.vol_embedding is not None else False)
-      self.speech_encoder = (self.config.model.speech_encoder if self.config.model.speech_encoder is not None else 'vec768l12')
+      self.unit_interpolate_mode = self.config.data.get('unit_interpolate_mode', 'left')
+      self.vol_embedding = self.config.model.get('vol_embedding', False)
+      self.speech_encoder = self.config.model.get('speech_encoder', 'vec768l12')
 
     if self.shallow_diffusion or self.only_diffusion:
       if os.path.exists(diffusion_ckpt) and os.path.exists(diffusion_ckpt):

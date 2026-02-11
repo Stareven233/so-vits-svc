@@ -2,9 +2,10 @@ r'''
 cd D:/Code/projects/so-vits-svc
 $python = 'D:/Code/projects/RIFT-SVC/.venv/Scripts/python.exe'
 
-$name = '「少女」'
 $name = 'aino'
 $name = 'fritia'
+$name = 'megumin'
+$name = '「少女」'
 
 1.
 $src_dir = "D:\Document\Audio\$name"
@@ -33,12 +34,13 @@ $path = "D:\Document\ai-sings\春庭雪\4k无损春庭雪橙翼_Vocals_vocals_no
 
 $python = 'D:/Code/projects/RIFT-SVC/.venv/Scripts/python.exe'
 cd D:/Code/projects/so-vits-svc
-$name = 'fritia'
+$name = '「少女」'
 $indir = 'D:/Document/ai-sings'
 $path = "${indir}/God Knows/4K高清修复音源升级God Knows_Vocals_vocals_noreverb-new-au.flac"
-$path = "${indir}/君は薔薇より美しい/布施明 君は薔薇より美しい 你比玫瑰更美丽_Vocals_vocals_noreverb.flac"
 $path = "${indir}/TAIDADA/TAIDADA_反相不纯人声_Vocals_vocals_noreverb.flac"
 $path = "$indir\心愿便利贴\心愿便利贴-王欣宇_vocals_noreverb.flac"
+$path = "$indir\ツキアカリのミチシルベ\4K 60FPS黑之契约者 流星的双子 stereopony月光的指引_Vocals_vocals.flac"
+$path = "${indir}/君は薔薇より美しい/君は薔薇より美しい_呼!.flac"
 & $python infer.py -m exp/$name -i $path -t 0
 
 New-Item -Path 'F:/CODE/!projects/so-vits-svc/pretrain/contentvec/checkpoint_best_legacy_500.pt' -ItemType HardLink -Target 'F:/CODE/!projects/DDSP-SVC/pretrain/contentvec/checkpoint_best_legacy_500.pt'

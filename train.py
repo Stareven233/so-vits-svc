@@ -78,7 +78,7 @@ def handle_configs(init=True):
   parser.add_argument(
     '--torch_compile_mode', type=str, default=None,
     choices=('default', 'reduce-overhead', 'max-autotune', 'max-autotune-no-cudagraphs', ),
-    help='Windows下需安装Visual Studio Tools 且在 Command Prompt for VS 20xx 中运行，且首次编译很慢（max-autotune 10min左右）'
+    help='Windows下需安装Visual Studio Tools 并在 Command Prompt for VS 20xx 中运行；首次编译很慢（max-autotune 10min左右）且需要更多显存'
   )
 
   args = parser.parse_args()
