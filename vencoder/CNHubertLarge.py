@@ -1,5 +1,4 @@
 import torch
-from fairseq import checkpoint_utils
 
 from vencoder.encoder import SpeechEncoder
 
@@ -13,6 +12,7 @@ class CNHubertLarge(SpeechEncoder):
     ):
         super().__init__()
         import logger
+        from fairseq import checkpoint_utils
 
         if log:
             logger.info("load model(s) from {}".format(vec_path))

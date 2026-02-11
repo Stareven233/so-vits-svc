@@ -12,9 +12,6 @@ import numpy as np
 import torch
 import torch.multiprocessing as mp
 from tqdm import tqdm
-import fairseq
-
-torch.serialization.add_safe_globals([fairseq.data.dictionary.Dictionary])
 
 from util import logger
 from util import sov_utils as utils

@@ -1,11 +1,11 @@
 r'''
 cd D:/Code/projects/so-vits-svc
-$python = 'D:/Code/projects/RIFT-SVC/.venv/Scripts/python.exe'
+$python = 'D:/Code/projects/Music-Source-Separation-Training/.venv/Scripts/python.exe'
 
 $name = 'aino'
-$name = 'fritia'
 $name = 'megumin'
 $name = '「少女」'
+$name = 'fritia'
 
 1.
 $src_dir = "D:\Document\Audio\$name"
@@ -31,16 +31,17 @@ $path = "D:/Document/ai-sings/新月的摇篮曲 (其一)  伴月同眠/哥伦�
 $path = "D:\Document\ai-sings\春庭雪\4k无损春庭雪橙翼_Vocals_vocals_noreverb.flac"
 & $python infer.py -m exp/$name -i $path -t 4
 
-
-$python = 'D:/Code/projects/RIFT-SVC/.venv/Scripts/python.exe'
+----------------------
+$python = 'D:/Code/projects/Music-Source-Separation-Training/.venv/Scripts/python.exe'
 cd D:/Code/projects/so-vits-svc
-$name = '「少女」'
+$name = 'megumin'
 $indir = 'D:/Document/ai-sings'
 $path = "${indir}/God Knows/4K高清修复音源升级God Knows_Vocals_vocals_noreverb-new-au.flac"
 $path = "${indir}/TAIDADA/TAIDADA_反相不纯人声_Vocals_vocals_noreverb.flac"
 $path = "$indir\心愿便利贴\心愿便利贴-王欣宇_vocals_noreverb.flac"
 $path = "$indir\ツキアカリのミチシルベ\4K 60FPS黑之契约者 流星的双子 stereopony月光的指引_Vocals_vocals.flac"
 $path = "${indir}/君は薔薇より美しい/君は薔薇より美しい_呼!.flac"
+$path = "${indir}/届かない恋/𝟒𝐊白色相簿2 NCOP届不到的爱恋_Vocals_vocals_noreverb.flac"
 & $python infer.py -m exp/$name -i $path -t 0
 
 New-Item -Path 'F:/CODE/!projects/so-vits-svc/pretrain/contentvec/checkpoint_best_legacy_500.pt' -ItemType HardLink -Target 'F:/CODE/!projects/DDSP-SVC/pretrain/contentvec/checkpoint_best_legacy_500.pt'
@@ -53,10 +54,6 @@ import re
 
 import soundfile
 import torch
-import fairseq
-
-torch.serialization.add_safe_globals([fairseq.data.dictionary.Dictionary])
-
 from inference import infer_tool
 from inference.infer_tool import Svc
 from spkmix import spk_mix_map
