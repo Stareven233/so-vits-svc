@@ -2,10 +2,10 @@ r'''
 cd D:/Code/projects/so-vits-svc
 $python = 'D:/Code/projects/Music-Source-Separation-Training/.venv/Scripts/python.exe'
 
-$name = 'aino'
 $name = 'megumin'
 $name = '「少女」'
 $name = 'fritia'
+$name = 'aino'
 
 1.
 $src_dir = "D:\Document\Audio\$name"
@@ -34,14 +34,14 @@ $path = "D:\Document\ai-sings\春庭雪\4k无损春庭雪橙翼_Vocals_vocals_no
 ----------------------
 $python = 'D:/Code/projects/Music-Source-Separation-Training/.venv/Scripts/python.exe'
 cd D:/Code/projects/so-vits-svc
-$name = 'megumin'
+$name = 'aino'
 $indir = 'D:/Document/ai-sings'
 $path = "${indir}/God Knows/4K高清修复音源升级God Knows_Vocals_vocals_noreverb-new-au.flac"
 $path = "${indir}/TAIDADA/TAIDADA_反相不纯人声_Vocals_vocals_noreverb.flac"
 $path = "$indir\心愿便利贴\心愿便利贴-王欣宇_vocals_noreverb.flac"
 $path = "$indir\ツキアカリのミチシルベ\4K 60FPS黑之契约者 流星的双子 stereopony月光的指引_Vocals_vocals.flac"
 $path = "${indir}/君は薔薇より美しい/君は薔薇より美しい_呼!.flac"
-$path = "${indir}/届かない恋/𝟒𝐊白色相簿2 NCOP届不到的爱恋_Vocals_vocals_noreverb.flac"
+$path = "${indir}/届かない恋/届かない恋_au.flac"
 & $python infer.py -m exp/$name -i $path -t 0
 
 New-Item -Path 'F:/CODE/!projects/so-vits-svc/pretrain/contentvec/checkpoint_best_legacy_500.pt' -ItemType HardLink -Target 'F:/CODE/!projects/DDSP-SVC/pretrain/contentvec/checkpoint_best_legacy_500.pt'
@@ -53,7 +53,6 @@ from pathlib import Path
 import re
 
 import soundfile
-import torch
 from inference import infer_tool
 from inference.infer_tool import Svc
 from spkmix import spk_mix_map
@@ -327,7 +326,8 @@ def main():
   use_spk_mix = args.use_spk_mix
   second_encoding = args.second_encoding
   loudness_envelope_adjustment = args.loudness_envelope_adjustment  # default: 1
-  vocal_register_factor = 2**(args.vocal_register_shift_key / 12)
+  # 自动预测音高时禁用音区偏移
+  vocal_register_shift_key = 0 if auto_predict_f0 else args.vocal_register_shift_key
 
   if model_path.is_dir():
     model_path = getLastestCheckpoint(model_path)
@@ -394,9 +394,9 @@ def main():
         use_spk_mix=use_spk_mix,
         second_encoding=second_encoding,
         loudness_envelope_adjustment=loudness_envelope_adjustment,
-        vocal_register_factor=vocal_register_factor,
+        vocal_register_factor=2**(vocal_register_shift_key / 12),
       )
-      key = '~' if auto_predict_f0 else f'{tran}'
+      key = f'{"~" if auto_predict_f0 else ""}{tran}'
       cluster_name = '' if cluster_infer_ratio == 0 else f'_{cluster_infer_ratio}'
       isdiffusion = 'sov'
       m = model_path.stem
@@ -410,7 +410,7 @@ def main():
         # rift@「少女」_4.0ks_0k_-60.0st
       m = ckpt_step_patten.search(m)
       ks = int(m.group(0)) / 1000
-      out_file = in_file.with_name(f'{in_file.stem}_{isdiffusion}@{spk}_{ks:.2f}ks_{key}k{cluster_name}_{args.vocal_register_shift_key}vk.{wav_format}')
+      out_file = in_file.with_name(f'{in_file.stem}_{isdiffusion}@{spk}_{ks:.2f}ks_{key}k{cluster_name}_{vocal_register_shift_key}vk.{wav_format}')
       soundfile.write(out_file, audio, svc_model.target_sample, format=wav_format)
       svc_model.clear_empty()
 

@@ -369,6 +369,7 @@ class Svc:
       if speaker_id is None:
         raise RuntimeError('The name you entered is not in the speaker list!')
       sid = torch.LongTensor([int(speaker_id)]).to(self.dev).unsqueeze(0)
+      # f0 经由 tran 进行调整
       c, f0, uv = self.get_unit_f0(
           wav,
           tran,
@@ -381,38 +382,43 @@ class Svc:
       n_frames = f0.size(1)
     c = c.to(self.dtype)
     f0 = f0.to(self.dtype)
-    raw_f0 = f0
     uv = uv.to(self.dtype)
     start = time.time()
     vol = None
+    # 开启 auto_predict_f0 之后 f0 由主模型预测，此时禁用音区偏移
+    use_vocal_register_shift = not auto_predict_f0 and vocal_register_factor != 1
+    # 音区偏移是否已调整过f0
+    is_vocal_register_shifted = False
+    audio_mel = None
+
+    # 主模型推理部分
     if not self.only_diffusion:
       vol = (self.volume_extractor.extract(torch.FloatTensor(wav).to(self.dev)[None, :])[None, :].to(self.dev) if self.vol_embedding else None)
-
+      if use_vocal_register_shift:
+        f0 /= vocal_register_factor
+        is_vocal_register_shifted = True
       audio, f0 = self.net_g_ms.infer(
-          c,
-          f0=f0 / vocal_register_factor,
-          g=sid,
-          uv=uv,
-          predict_f0=auto_predict_f0,
-          noice_scale=noice_scale,
-          vol=vol.to(self.dtype) if isinstance(vol, torch.Tensor) else None,
+        c,
+        f0=f0,
+        g=sid,
+        uv=uv,
+        predict_f0=auto_predict_f0,
+        noice_scale=noice_scale,
+        vol=vol.to(self.dtype) if isinstance(vol, torch.Tensor) else None,
       )
-      if self.shallow_diffusion:
-        f0 = raw_f0 if auto_predict_f0 else f0 * vocal_register_factor
-
       audio = audio[0, 0].data.float()
-      audio_mel = (self.vocoder.extract(
-          audio[None, :],
-          self.target_sample,
-      ) if self.shallow_diffusion or vocal_register_factor != 1 else None)
     else:
       audio = torch.FloatTensor(wav).to(self.dev)
-      audio_mel = None
+    if self.shallow_diffusion or use_vocal_register_shift:
+      audio_mel = self.vocoder.extract(audio[None, :], self.target_sample)
+    
     if self.dtype != torch.float32:
       c = c.to(torch.float32)
       f0 = f0.to(torch.float32)
       uv = uv.to(torch.float32)
       # vol = vol.to(torch.float32)
+
+    # 浅扩散推理部分
     if self.only_diffusion or self.shallow_diffusion:
       vol = (self.volume_extractor.extract(audio[None, :])[None, :, None].to(self.dev) if vol is None else vol[:, :, None])
       if self.shallow_diffusion and second_encoding:
@@ -423,9 +429,11 @@ class Svc:
         c = utils.repeat_expand_2d(c.squeeze(0), f0.shape[1], self.unit_interpolate_mode)
       f0 = f0[:, :, None]
       c = c.transpose(-1, -2)
+      if use_vocal_register_shift and not is_vocal_register_shifted:
+        f0 /= vocal_register_factor
       audio_mel = self.diffusion_model(
           c,
-          f0 / vocal_register_factor,
+          f0,
           vol,
           spk_id=sid,
           spk_mix_dict=None,
@@ -435,11 +443,13 @@ class Svc:
           method=self.args_diff.infer.method,
           k_step=k_step,
       )
-    if self.shallow_diffusion or vocal_register_factor != 1:
-      audio = self.vocoder.infer(
-          audio_mel,
-          raw_f0 if raw_f0.dim() == 3 else raw_f0.unsqueeze(-1),
-      ).squeeze()
+
+    # 经过了浅扩散 或 开启音区偏移，都需要声码器从梅尔频谱重新推断音频
+    if self.shallow_diffusion or is_vocal_register_shifted:
+      if is_vocal_register_shifted:
+        # 使用了音区偏移，重新恢复f0
+        f0 *= vocal_register_factor
+      audio = self.vocoder.infer(audio_mel, f0 if f0.dim() == 3 else f0.unsqueeze(-1)).squeeze()
 
     if self.nsf_hifigan_enhance:
       audio, _ = self.enhancer.enhance(
